@@ -192,28 +192,40 @@ interface GigabitEthernet0/1.100
 - **Acceso**: Los clientes usan IMAP (puerto 143) para acceder al correo. Se configura un firewall para permitir solo tráfico autorizado.
 
 ### 6.2 Servicio de Archivos
-- **Implementación**: Se configura un servidor Samba en el mismo equipo virtualizado con tres perfiles de acceso:
-  - **Perfil 1 (Lectura)**: Acceso de solo lectura para VLAN Contabilidad.
-  - **Perfil 2 (Escritura)**: Acceso de lectura/escritura para VLAN Desarrollo.
-  - **Perfil 3 (Administrador)**: Acceso completo para VLAN Adm. Red.
+- **Implementación**: Se configuró un servidor Samba en una máquina virtual existente con **Ubuntu Server** (VMware) en la subred de equipos de red (IPv4: 172.16.20.161, IPv6: 2001:dbad:acad:5000::2). El servidor proporciona tres recursos compartidos con políticas de acceso diferenciadas:
+  - **Perfil 1 (Contabilidad)**: Acceso de solo lectura, restringido al grupo `contabilidad`.
+  - **Perfil 2 (Desarrollo)**: Acceso de lectura/escritura, restringido al grupo `desarrollo`.
+  - **Perfil 3 (Administración)**: Acceso completo (lectura/escritura con permisos totales), restringido al grupo `admon`.
 - **Configuración Samba**:
-  ```plaintext
+  ```ini
   [Contabilidad]
-   path = /srv/samba/contabilidad
-   read only = yes
-   valid users = @contabilidad
-  [Desarrollo]
-   path = /srv/samba/desarrollo
-   read only = no
-   valid users = @desarrollo
-  [Admon]
-   path = /srv/samba/admon
-   read only = no
-   create mask = 0777
-   valid users = @admon
-  ```
+     path = /srv/samba/contabilidad
+     read only = yes
+     valid users = @contabilidad
+     browsable = yes
 
----
+  [Desarrollo]
+     path = /srv/samba/desarrollo
+     read only = no
+     valid users = @desarrollo
+     browsable = yes
+
+  [Admon]
+     path = /srv/samba/admon
+     read only = no
+     create mask = 0777
+     directory mask = 0777
+     valid users = @admon
+     browsable = yes
+  ```
+- **Detalles Técnicos**:
+  - **Sistema Operativo**: Ubuntu Server, configurado en una máquina virtual VMware.
+  - **Usuarios y Grupos**: Se crearon grupos (`contabilidad`, `desarrollo`, `admon`) y usuarios asociados, con contraseñas Samba para autenticación.
+  - **Permisos**: Los directorios `/srv/samba/*` tienen permisos ajustados (750 para Contabilidad, 770 para Desarrollo y Admon) para reflejar las políticas de acceso.
+  - **Red**: La máquina virtual está configurada con direcciones estáticas (172.16.20.161/28 y 2001:dbad:acad:5000::2/64) y es accesible desde todas las VLANs gracias al enrutamiento inter-VLAN.
+  - **Firewall**: Se configuró `ufw` para permitir tráfico SMB/CIFS (puertos 137, 138, 139, 445).
+- **Acceso**: Los clientes en las VLANs acceden a los recursos compartidos mediante SMB (e.g., `\\172.16.20.161\Contabilidad` en Windows o `smbclient` en Linux). Soporte para IPv6 está habilitado.
+- **Validación**: Se verificó que los usuarios de cada grupo tienen los permisos correctos (solo lectura para Contabilidad, lectura/escritura para Desarrollo, control total para Admon).
 
 ## 7. Implementación y Validación
 
