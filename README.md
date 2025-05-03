@@ -14,7 +14,14 @@ Este documento describe el diseño de una red empresarial que cumple con los req
 - **Asignación dinámica**: Uso de DHCP para dispositivos finales y direcciones estáticas para equipos de red y administración.
 - **Subnetting IPv6**: Subredes de /64 para cumplir con los estándares de asignación de prefijos.
 
-### 2.2 Direccionamiento IPv4
+### 2.2 Topología
+- **Router EDGE**: Configurado como Router-on-a-Stick para enrutamiento inter-VLAN. Conectado por interfaz serial al Router ISP. Actúa como servidor DHCP para todas las VLANs.
+- **Router ISP**: Conecta Router EDGE y Router RT_SERVICES mediante interfaces seriales.
+- **Router RT_SERVICES**: Conectado al servidor de archivos y correo (Samba/Postfix) en la subred 172.16.20.160/28.
+- **Servidor**: Máquina virtual Ubuntu con Samba y Postfix, accesible desde todas las VLANs a través de la VPN.
+- **VPN**: IPsec sitio a sitio entre Router EDGE y Router RT_SERVICES para comunicación segura.
+
+### 2.3 Direccionamiento IPv4
 La dirección base es **172.16.16.0/20**, que proporciona 4096 direcciones (de 172.16.16.0 a 172.16.31.255). Se divide en subredes considerando el número de usuarios por VLAN en cada edificio, más un 5% de crecimiento. A continuación, se detalla el cálculo:
 
 #### Usuarios por VLAN con Crecimiento
@@ -69,9 +76,24 @@ La dirección base es **2001:dbad:acad::/48**. Se asignan subredes de /64, añad
 **Nota**: Los prefijos se asignan jerárquicamente (1000 para Contabilidad, 2000 para Desarrollo, etc.) para facilitar la administración y escalabilidad.
 
 ### 2.4 Asignación Dinámica de Direcciones
-- **IPv4**: Se configura un servidor DHCP en cada edificio para cada VLAN, asignando direcciones dinámicas a dispositivos finales. Los servidores DHCP se configuran en la subred de equipos de red (172.16.20.160/28). Se excluyen las primeras 10 direcciones de cada subred para asignaciones estáticas (gateways, servidores, etc.).
+- **IPv4**: El Router EDGE actúa como servidor DHCP, asignando direcciones dinámicas a dispositivos finales en cada VLAN. Se excluyen las primeras 10 direcciones de cada subred para gateways y equipos estáticos.
+  ```plaintext
+  ip dhcp excluded-address 172.16.16.1 172.16.16.9
+  ip dhcp pool VLAN100_E1
+   network 172.16.16.0 255.255.255.128
+   default-router 172.16.16.1
+   dns-server 8.8.8.8
+  ! Similar para otras VLANs
+  ```
 - **IPv6**: Se utiliza SLAAC (Stateless Address Autoconfiguration) para asignar direcciones automáticamente a dispositivos finales, con el router enviando anuncios de prefijo (/64). Para dispositivos de red, se asignan direcciones estáticas en la subred 2001:dbad:acad:5000::/64.
-
+  ```plaintext
+  interface GigabitEthernet0/1.100
+   ipv6 address 2001:dbad:acad:1000::1/64
+   ipv6 nd prefix 2001:dbad:acad:1000::/64
+   ipv6 nd managed-config-flag
+   ipv6 nd other-config-flag
+  ```
+  
 ---
 
 ## 3. Diseño de Red Física y Redundancia
@@ -82,6 +104,7 @@ La red consta de:
 - **Switches de Distribución**: Uno por edificio, conectados al router EDGE mediante enlaces troncales (trunk).
 - **Switches de Acceso**: Conectados a los switches de distribución, asignados a las VLANs específicas por edificio.
 - **Servidores**: Un servidor virtualizado (físico) en la subred de equipos de red para servicios de correo y archivos.
+- **STP**: Rapid Per-VLAN Spanning Tree (PVST) para evitar bucles.
 
 ### 3.2 Aumento de Ancho de Banda y Redundancia
 - **EtherChannel**: Se configuran enlaces EtherChannel entre switches de distribución y acceso para aumentar el ancho de banda. Cada EtherChannel agrupa dos o más interfaces GigabitEthernet, proporcionando redundancia y mayor capacidad.
