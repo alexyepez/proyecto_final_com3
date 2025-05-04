@@ -21,6 +21,9 @@ Este documento describe el diseño de una red empresarial que cumple con los req
 - **Servidor**: Máquina virtual Ubuntu con Samba y Postfix, accesible desde todas las VLANs a través de la VPN.
 - **VPN**: IPsec sitio a sitio entre Router EDGE y Router RT_SERVICES para comunicación segura.
 
+![image](https://github.com/user-attachments/assets/21055ba6-4b9d-45d7-8952-bf5358b405d8)
+
+
 ### 2.3 Direccionamiento IPv4
 La dirección base es **172.16.16.0/20**, que proporciona 4096 direcciones (de 172.16.16.0 a 172.16.31.255). Se divide en subredes considerando el número de usuarios por VLAN en cada edificio, más un 5% de crecimiento. A continuación, se detalla el cálculo:
 
@@ -642,16 +645,16 @@ El diseño propuesto cumple con todos los requerimientos del proyecto, proporcio
 
 ## 11. Configuración de Thunderbird en Windows
 ### Instalación
-1. Descarga e instala Thunderbird desde [https://www.thunderbird.net](https://www.thunderbird.net).
+1. Descargar e instalar Thunderbird desde [https://www.thunderbird.net](https://www.thunderbird.net).
 
 ### Creación de cuenta
-2. Crea una nueva cuenta (puedes omitir este paso si no tienes un correo real):
+2. Crear una nueva cuenta (se puede omitir este paso si no se tiene un correo real):
    - **Nombre:** `correo1`
    - **Correo:** `correo1@empresa.com`
    - **Contraseña:** `correo123`
 
 ### Configuración manual
-3. Configura los servidores manualmente:
+3. Configurar los servidores manualmente:
 
    #### Servidor entrante (IMAP)
    - **Servidor:** `172.16.20.34`
@@ -666,7 +669,7 @@ El diseño propuesto cumple con todos los requerimientos del proyecto, proporcio
    - **Autenticación:** `Contraseña normal`
    - **Usuario:** `correo1`
 
-4. Guarda los cambios y prueba enviándote un correo de prueba.
+4. Guardar los cambios y probar enviando un correo de prueba.
 
 ---
 
