@@ -280,6 +280,7 @@ La red consta de:
   - EtherChannel: Usa LACP (mode active) para negociar los enlaces. Cada Port-channel es un tronco que permite todas las VLANs.
   - Switch 1 es la raíz primaria (prioridad 4096), Switch 2 secundaria (8192), y Switch 3 terciaria (12288) para balanceo y redundancia.
   - Interfaz de Administración: Cada switch tiene una dirección en VLAN 400 (172.16.20.5-7) para gestión remota.
+
 ---
 
 ## 4. Seguridad
@@ -397,7 +398,6 @@ La red consta de:
   - Probar conectividad
     - Desde un PC en cualquier VLAN (por ejemplo, 172.16.16.10 en VLAN 100), accede al servidor Samba (\\172.16.20.34\Contabilidad) o Postfix (IMAP en 172.16.20.34:143).
     - El tráfico debe pasar por el túnel IPsec.
-  ---
   
 ### 4.3 Acceso Remoto Seguro
 - **SSH**: Los dispositivos de red (routers y switches) se configuran con SSH para administración remota, deshabilitando Telnet.
@@ -513,6 +513,7 @@ interface Loopback0
   - Cada router tiene un router-id único.
   - Todas las subredes (VLANs, servidor, seriales, loopbacks) se anuncian en el área 0.
   - OSPFv3 requiere habilitar IPv6 en las interfaces relevantes.
+
 ---
 
 ## 6. Servicios
@@ -591,6 +592,8 @@ interface Loopback0
 - **Validación**: Permisos verificados por perfil.
 - **Simulación en Packet Tracer**: Servidor genérico con FTP.
 
+---
+
 ## 7. Implementación y Validación
 
 ### 7.1 Implementación en Packet Tracer
@@ -635,6 +638,8 @@ El diseño propuesto cumple con todos los requerimientos del proyecto, proporcio
 - **Configuraciones Completas**: Scripts de configuración para routers y switches.
 - **Guías de Implementación**: Documentación adicional para servidores Postfix y Samba.
 
+---
+
 ## 11. Configuración de Thunderbird en Windows
 ### Instalación
 1. Descarga e instala Thunderbird desde [https://www.thunderbird.net](https://www.thunderbird.net).
@@ -662,6 +667,8 @@ El diseño propuesto cumple con todos los requerimientos del proyecto, proporcio
    - **Usuario:** `correo1`
 
 4. Guarda los cambios y prueba enviándote un correo de prueba.
+
+---
 
 ## 12. Script de configuración Samba/PostFix-Dovecot para red en casa desde ISP
 ```ini
@@ -794,7 +801,9 @@ sudo systemctl restart smbd nmbd postfix dovecot
 
 echo "✅ Configuración de casa completada."
 ```
+
 ---
+
 ## 13. Script de configuración de red para laboratorio de cisco
 ```ini
 #!/bin/bash
@@ -828,7 +837,9 @@ sudo systemctl restart smbd nmbd postfix dovecot
 
 echo "✅ Red del laboratorio configurada."
 ```
+
 ---
+
 ## 14. Script de configuración de red al volver a la red local de casa
 ```ini
 #!/bin/bash
