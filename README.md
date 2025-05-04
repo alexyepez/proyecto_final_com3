@@ -562,7 +562,7 @@ interface Loopback0
      security = user
 
   [Contabilidad]
-     path = /srv/samba/contABILIDAD
+     path = /srv/samba/contabilidad
      read only = yes
      valid users = @contabilidad
      browsable = yes
