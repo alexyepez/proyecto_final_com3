@@ -518,18 +518,51 @@ interface Loopback0
 ## 6. Servicios
 
 ### 6.1 Servicio de Correo
-- **Implementación**: Se configura un servidor de correo (Postfix en Linux virtualizado) en la subred de equipos de red (172.16.20.161, 2001:dbad:acad:5000::2). Se crean 10 cuentas de usuario accesibles desde todas las VLANs.
-- **Acceso**: Los clientes usan IMAP (puerto 143) para acceder al correo. Se configura un firewall para permitir solo tráfico autorizado.
+- **Implementación**: Postfix y Dovecot en máquina virtual Ubuntu (IPv4: 172.16.20.34, IPv6: 2001:dbad:acad:5000::2). 10 usuarios configurados (correo1@empresa.com a correo10@empresa.com).
+- **Configuración Postfix**:
+  ```ini
+  myhostname = mail.empresa.com
+  mydomain = empresa.com
+  inet_interfaces = 172.16.20.34, 2001:dbad:acad:5000::2
+  mynetworks = 172.16.16.0/20, 2001:dbad:acad::/48
+  mydestination = $myhostname, localhost.$mydomain, $mydomain
+  ```
+- **Configuración Dovecot**:
+  - Protocolo: IMAP (puerto 143).
+  - Ubicación de buzones: `maildir:~/Maildir`.
+  - Autenticación: Usuarios del sistema.
+  ```ini
+  service imap-login {
+    inet_listener imap {
+      address = 172.16.20.34, 2001:dbad:acad:5000::2
+      port = 143
+    }
+  }
+  ```
+- **Detalles Técnicos**:
+  - Sistema Operativo: Ubuntu Server en VMware.
+  - Usuarios: 10 usuarios del sistema con buzones Maildir.
+  - Red: Accesible desde todas las VLANs vía VPN.
+  - Firewall: Puertos 25 (SMTP) y 143 (IMAP) abiertos en `ufw`.
+- **Acceso**: Clientes usan IMAP (e.g., `imap://172.16.20.34:143`). Soporte para IPv6 habilitado.
+- **Validación**: Envío y recepción de correos entre usuarios.
+- **Simulación en Packet Tracer**: Servidor genérico con correo simulado.
 
 ### 6.2 Servicio de Archivos
-- **Implementación**: Se configuró un servidor Samba en una máquina virtual existente con **Ubuntu Server** (VMware) en la subred de equipos de red (IPv4: 172.16.20.161, IPv6: 2001:dbad:acad:5000::2). El servidor proporciona tres recursos compartidos con políticas de acceso diferenciadas:
-  - **Perfil 1 (Contabilidad)**: Acceso de solo lectura, restringido al grupo `contabilidad`.
-  - **Perfil 2 (Desarrollo)**: Acceso de lectura/escritura, restringido al grupo `desarrollo`.
-  - **Perfil 3 (Administración)**: Acceso completo (lectura/escritura con permisos totales), restringido al grupo `admon`.
+- **Implementación**: Samba en la misma máquina virtual Ubuntu (IPv4: 172.16.20.34, IPv6: 2001:dbad:acad:5000::2). Tres perfiles:
+  - Contabilidad: Solo lectura, grupo `contabilidad`.
+  - Desarrollo: Lectura/escritura, grupo `desarrollo`.
+  - Administración: Acceso completo, grupo `admon`.
 - **Configuración Samba**:
   ```ini
+  [global]
+     server string = Samba Server
+     bind interfaces only = yes
+     interfaces = 172.16.20.34 2001:dbad:acad:5000::2
+     security = user
+
   [Contabilidad]
-     path = /srv/samba/contabilidad
+     path = /srv/samba/contABILIDAD
      read only = yes
      valid users = @contabilidad
      browsable = yes
@@ -549,13 +582,14 @@ interface Loopback0
      browsable = yes
   ```
 - **Detalles Técnicos**:
-  - **Sistema Operativo**: Ubuntu Server, configurado en una máquina virtual VMware.
-  - **Usuarios y Grupos**: Se crearon grupos (`contabilidad`, `desarrollo`, `admon`) y usuarios asociados, con contraseñas Samba para autenticación.
-  - **Permisos**: Los directorios `/srv/samba/*` tienen permisos ajustados (750 para Contabilidad, 770 para Desarrollo y Admon) para reflejar las políticas de acceso.
-  - **Red**: La máquina virtual está configurada con direcciones estáticas (172.16.20.161/28 y 2001:dbad:acad:5000::2/64) y es accesible desde todas las VLANs gracias al enrutamiento inter-VLAN.
-  - **Firewall**: Se configuró `ufw` para permitir tráfico SMB/CIFS (puertos 137, 138, 139, 445).
-- **Acceso**: Los clientes en las VLANs acceden a los recursos compartidos mediante SMB (e.g., `\\172.16.20.161\Contabilidad` en Windows o `smbclient` en Linux). Soporte para IPv6 está habilitado.
-- **Validación**: Se verificó que los usuarios de cada grupo tienen los permisos correctos (solo lectura para Contabilidad, lectura/escritura para Desarrollo, control total para Admon).
+  - Sistema Operativo: Ubuntu Server en VMware.
+  - Usuarios y Grupos: Grupos `contabilidad`, `desarrollo`, `admon` con usuarios asociados.
+  - Permisos: Directorios `/srv/samba/*` con permisos 750 (Contabilidad) y 770 (Desarrollo, Admon).
+  - Red: Accesible desde todas las VLANs vía VPN.
+  - Firewall: Puertos SMB/CIFS (137, 138, 139, 445) abiertos en `ufw`.
+- **Acceso**: Clientes acceden mediante SMB (e.g., `\\172.16.20.34\Contabilidad`). Soporte para IPv6 habilitado.
+- **Validación**: Permisos verificados por perfil.
+- **Simulación en Packet Tracer**: Servidor genérico con FTP.
 
 ## 7. Implementación y Validación
 
@@ -579,12 +613,15 @@ interface Loopback0
 ---
 
 ## 8. Decisiones de Diseño
+- **Router ISP en VLAN 400**: Para gestión remota.
 - **EtherChannel**: Elegido para aumentar el ancho de banda y proporcionar redundancia sin depender de hardware adicional.
+- **Servidor en Subred Separada**: Samba/Postfix en 172.16.20.32/29 para simplificar enrutamiento.
 - **PVST**: Seleccionado para optimizar la redundancia por VLAN y evitar bucles.
 - **OSPF/OSPFv3**: Usado para enrutamiento dinámico por su escalabilidad y soporte en doble stack.
 - **Samba para Archivos**: Escogido por su compatibilidad con múltiples plataformas y facilidad de configuración de perfiles.
 - **Postfix para Correo**: Seleccionado por su robustez y soporte para múltiples usuarios.
 - **IPsec con AES-256**: Implementado para garantizar confidencialidad en la VPN, cumpliendo con estándares de seguridad modernos.
+- **Interfaces Seriales**: Subredes /30 para enlaces punto a punto.
 
 ---
 
