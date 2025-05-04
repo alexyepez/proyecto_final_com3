@@ -165,42 +165,37 @@ La red consta de:
   interface vlan 400
    ip address 172.16.20.5 255.255.255.224
    ipv6 address 2001:dbad:acad:4000::5/64
-   no shutdown
+   ip default-gateway 172.16.20.1
 
-  ! Configurar enlace troncal al Router EDGE
-  interface GigabitEthernet0/1
-   switchport mode trunk
-   switchport trunk allowed vlan 100,200,300,400
-   no shutdown
-
-  ! Configurar EtherChannel a Switch Edificio 2
-  interface range GigabitEthernet0/2 - 0/3
+  ! Configurar EtherChannel a Switch 2 (Port-channel 1)
+  interface range GigabitEthernet0/1 - 2
    switchport mode trunk
    switchport trunk allowed vlan 100,200,300,400
    channel-group 1 mode active
-   no shutdown
   interface Port-channel1
    switchport mode trunk
    switchport trunk allowed vlan 100,200,300,400
-   no shutdown
 
-  ! Configurar EtherChannel a Switch Edificio 3
-  interface range GigabitEthernet1/0 - 1/1
+  ! Configurar EtherChannel a Switch 3 (Port-channel 2)
+  interface range GigabitEthernet1/0 - 1
    switchport mode trunk
    switchport trunk allowed vlan 100,200,300,400
    channel-group 2 mode active
-   no shutdown
   interface Port-channel2
    switchport mode trunk
    switchport trunk allowed vlan 100,200,300,400
-   no shutdown
 
-  ! Configurar PVST (Switch Edif. 1 como raíz primaria)
+  ! Configurar enlace troncal a Router EDGE
+  interface GigabitEthernet2/0
+   switchport mode trunk
+   switchport trunk allowed vlan 100,200,300,400
+
+  ! Configurar Rapid PVST (Switch 1 como raíz primaria)
   spanning-tree mode rapid-pvst
   spanning-tree vlan 100,200,300,400 priority 4096
   ```
 
-- **Configuración Switch 2 (Conecta a switch Edificio 1)**:
+- **Configuración Switch 2 (Conecta a Switches Edificio 1/3)**:
   ```plaintext
   ! Configurar VLANs
   vlan 100
@@ -216,25 +211,32 @@ La red consta de:
   interface vlan 400
    ip address 172.16.20.6 255.255.255.224
    ipv6 address 2001:dbad:acad:4000::6/64
-   no shutdown
+   ip default-gateway 172.16.20.1
 
-  ! Configurar EtherChannel a Switch Edificio 1
-  interface range GigabitEthernet0/1 - 0/2
+  ! Configurar EtherChannel a Switch 1 (Port-channel 1)
+  interface range GigabitEthernet0/1 - 2
    switchport mode trunk
    switchport trunk allowed vlan 100,200,300,400
    channel-group 1 mode active
-   no shutdown
   interface Port-channel1
    switchport mode trunk
    switchport trunk allowed vlan 100,200,300,400
-   no shutdown
 
-  ! Configurar PVST
+  ! Configurar EtherChannel a Switch 3 (Port-channel 3)
+  interface range GigabitEthernet1/0 - 1
+   switchport mode trunk
+   switchport trunk allowed vlan 100,200,300,400
+   channel-group 3 mode active
+  interface Port-channel3
+   switchport mode trunk
+   switchport trunk allowed vlan 100,200,300,400
+
+  ! Configurar Rapid PVST
   spanning-tree mode rapid-pvst
   spanning-tree vlan 100,200,300,400 priority 8192
   ```
 
-- **Configuración en Switch 3 (Conecta Edificio 2)**:
+- **Configuración en Switch 3 (Conecta a Switches Edificio 1/2)**:
   ```plaintext
   ! Crear VLANs
   vlan 100
@@ -246,46 +248,60 @@ La red consta de:
   vlan 400
    name ADMON_RED
 
-  ! Configurar EtherChannel hacia Switch_D1
-  interface Port-channel1
-   switchport mode trunk
-   switchport trunk allowed vlan 100,200,300,400
+  ! Configurar interfaz de administración
+  interface vlan 400
+   ip address 172.16.20.7 255.255.255.224
+   ipv6 address 2001:dbad:acad:4000::7/64
+   ip default-gateway 172.16.20.1
+
+  ! Configurar EtherChannel a Switch 1 (Port-channel 2)
   interface range GigabitEthernet0/1 - 2
    switchport mode trunk
    switchport trunk allowed vlan 100,200,300,400
-   channel-group 1 mode active
-   no shutdown
+   channel-group 2 mode active
+  interface Port-channel2
+   switchport mode trunk
+   switchport trunk allowed vlan 100,200,300,400
 
-  ! Configurar puertos de acceso (ejemplo para VLAN 100)
-  interface GigabitEthernet0/3
-   switchport mode access
-   switchport access vlan 100
-   no shutdown
+  ! Configurar EtherChannel a Switch 2 (Port-channel 3)
+  interface range GigabitEthernet1/0 - 1
+   switchport mode trunk
+   switchport trunk allowed vlan 100,200,300,400
+   channel-group 3 mode active
+  interface Port-channel3
+   switchport mode trunk
+   switchport trunk allowed vlan 100,200,300,400
 
   ! Configurar Rapid PVST
   spanning-tree mode rapid-pvst
+  spanning-tree vlan 100,200,300,400 priority 12288
   ```
+- **NOTAS**:
+  - EtherChannel: Usa LACP (mode active) para negociar los enlaces. Cada Port-channel es un tronco que permite todas las VLANs.
+  - Switch 1 es la raíz primaria (prioridad 4096), Switch 2 secundaria (8192), y Switch 3 terciaria (12288) para balanceo y redundancia.
+  - Interfaz de Administración: Cada switch tiene una dirección en VLAN 400 (172.16.20.5-7) para gestión remota.
 ---
 
 ## 4. Seguridad
 
 ### 4.1 Control de Acceso Físico
-- **Port Security**: Para garantizar que solo los usuarios autorizados accedan físicamente a la red a través de los switches, configuramos Port Security en los puertos de acceso de los switches de cada edificio (Switch_A1, Switch_A2, Switch_A3). Esto limita el acceso a una sola dirección MAC por puerto y desactiva el puerto si se detecta un dispositivo no autorizado.
+- **Port Security**: El control de acceso físico se implementa con Port Security en los puertos de acceso de los switches (donde se conectan los dispositivos finales, como PCs). Esto garantiza que solo dispositivos autorizados (por dirección MAC) puedan conectarse, y los puertos se deshabilitarán ante intentos no autorizados.
+- **Configuración Genérica para Puertos de Acceso (en cada switch)**:
+  - Se aplica a los puertos de acceso (por ejemplo, FastEthernet0/23-24, asumiendo que los puertos 0/23-24/ están usados para EtherChannel).
 
 - **Configuración de Port Security (Switch Edificio 1)**:
   ```plaintext
-  ! Configurar Port Security en puertos de acceso (ejemplo para VLAN 100)
-  interface GigabitEthernet0/3
+  ! Configurar Port Security en puertos de acceso
+  interface range FastEthernet1/1 - 24
    switchport mode access
-   switchport access vlan 100
+   switchport access vlan 100  ! Cambiar a 200, 300, o 400 según el puerto
    switchport port-security
    switchport port-security maximum 1
    switchport port-security violation shutdown
    switchport port-security mac-address sticky
-   no shutdown
 
-  ! Repetir para otros puertos de acceso (por ejemplo, GigabitEthernet0/4 para VLAN 200, etc.)
-  interface GigabitEthernet0/4
+  ! Repetir para otros puertos de acceso (por ejemplo, FastEthernet0/2 para VLAN 200, etc.)
+  interface FastEthernet0/2
    switchport mode access
    switchport access vlan 200
    switchport port-security
@@ -294,33 +310,38 @@ La red consta de:
    switchport port-security mac-address sticky
    no shutdown
   ```
-- **Configuración en Switch_A2 (Edificio 2) y Switch_A3 (Edificio 3)**: Similar a Switch_A1, aplicando Port Security a todos los puertos de acceso conectados a dispositivos finales (PCs) en las VLANs 100, 200, 300, y 400.
+- **Configuración en Switch 2 (Edificio 2) y Switch 3 (Edificio 3)**: Similar a Switch 1, aplicando Port Security a todos los puertos de acceso conectados a dispositivos finales (PCs) en las VLANs 100, 200, 300, y 400.
 - **NOTAS**
   - maximum 1: Permite solo una dirección MAC por puerto.
   - violation shutdown: Desactiva el puerto si se conecta un dispositivo no autorizado.
   - mac-address sticky: Aprende automáticamente la primera dirección MAC que se conecta y la guarda como autorizada.
-  - Los puertos troncales (hacia Switch_Dx o Router EDGE) no requieren Port Security, ya que conectan dispositivos de red confiables.
+  - Los puertos troncales (hacia Router EDGE) no requieren Port Security, ya que conectan dispositivos de red confiables.
 
 ### 4.2 Comunicación Segura
-- **VPN Sitio a Sitio con IPsec**: Se configura una VPN entre el router EDGE y un sitio remoto (simulado) para garantizar confidencialidad. Se utiliza IPsec con cifrado AES-256 y autenticación SHA-256.
+- **VPN Sitio a Sitio con IPsec**: Se configura una VPN entre el router EDGE y un sitio remoto para garantizar confidencialidad. Se utiliza IPsec con cifrado AES-256 y autenticación SHA-256.
 
 - **Objetivo de la VPN**:
   - Garantizar confidencialidad para el tráfico entre las VLANs (en la red del Router EDGE) y el servidor Samba/Postfix (en la red del Router RT_SERVICES).
-  - Usar IPsec con cifrado AES-256 y autenticación SHA-256.
+  - La VPN usa IPsec con cifrado AES-256 y autenticación SHA-256, aplicada a las interfaces seriales de los routers EDGE (172.16.20.41) y RT_SERVICES (172.16.20.46).
 
 - **Configuración de la VPN**:
     La VPN IPsec requiere configuraciones espejo en el Router EDGE y el Router RT_SERVICES, aplicadas a sus interfaces seriales (Serial0/0/0 en ambos routers). La ACL define el tráfico a cifrar: desde las VLANs (172.16.16.0/20) hacia la subred del servidor (172.16.20.32/29) y viceversa.
+    - Política ISAKMP (fase 1): Establece los parámetros de autenticación y cifrado.
+    - Clave precompartida: Para autenticar los routers.
+    - Transform-set: Define el cifrado y autenticación para la fase 2.
+    - ACL: Especifica el tráfico a cifrar (VLANs ↔ servidor).
+    - Crypto map: Combina la configuración y se aplica a la interfaz serial.
 
 - **Configuración en router EDGE**:
   ```plaintext
-  ! Definir política ISAKMP (Fase 1)
+  ! Definir política ISAKMP (fase 1)
   crypto isakmp policy 10
    encryption aes 256
    authentication pre-share
    group 2
   crypto isakmp key SecretKey address 172.16.20.46
 
-  ! Definir transform-set (Fase 2)
+  ! Definir transform-set (fase 2)
   crypto ipsec transform-set TS esp-aes 256 esp-sha-hmac
 
   ! Definir ACL para tráfico VPN
@@ -336,19 +357,19 @@ La red consta de:
   ! Aplicar crypto map a la interfaz serial
   interface Serial0/0/0
    ip address 172.16.20.41 255.255.255.252
+   ipv6 address 2001:dbad:acad:6000::1/126
    crypto map CMAP
-   no shutdown
   ```
 - **RT_SERVICES**:
   ```plaintext
-  ! Definir política ISAKMP (Fase 1)
+  ! Definir política ISAKMP (fase 1)
   crypto isakmp policy 10
    encryption aes 256
    authentication pre-share
    group 2
   crypto isakmp key SecretKey address 172.16.20.41
 
-  ! Definir transform-set (Fase 2)
+  ! Definir transform-set (fase 2)
   crypto ipsec transform-set TS esp-aes 256 esp-sha-hmac
 
   ! Definir ACL para tráfico VPN
@@ -364,10 +385,20 @@ La red consta de:
   ! Aplicar crypto map a la interfaz serial
   interface Serial0/0/0
    ip address 172.16.20.46 255.255.255.252
+   ipv6 address 2001:dbad:acad:6004::2/126
    crypto map CMAP
-   no shutdown
   ```
-
+- **Pruebas de la VPN**:
+  - Verificar el Túnel:
+    ```plaintext
+    show crypto isakmp sa
+    show crypto ipsec sa
+    ```
+  - Probar conectividad
+    - Desde un PC en cualquier VLAN (por ejemplo, 172.16.16.10 en VLAN 100), accede al servidor Samba (\\172.16.20.34\Contabilidad) o Postfix (IMAP en 172.16.20.34:143).
+    - El tráfico debe pasar por el túnel IPsec.
+  ---
+  
 ### 4.3 Acceso Remoto Seguro
 - **SSH**: Los dispositivos de red (routers y switches) se configuran con SSH para administración remota, deshabilitando Telnet.
   ```plaintext
@@ -414,11 +445,13 @@ Se configura OSPF para IPv4 y OSPFv3 para IPv6 para enrutamiento dinámico entre
 ```plaintext
 ! OSPF para IPv4
 router ospf 1
+ router-id 1.1.1.1
  network 172.16.16.0 0.0.1.255 area 0  ! VLAN 100
  network 172.16.18.0 0.0.0.255 area 0  ! VLAN 200
  network 172.16.19.0 0.0.0.255 area 0  ! VLAN 300
  network 172.16.20.0 0.0.0.31 area 0   ! VLAN 400
  network 172.16.20.40 0.0.0.3 area 0   ! Serial EDGE-ISP
+ network 172.16.20.2 0.0.0.0 area 0    ! Loopback
 
 ! OSPFv3 para IPv6
 ipv6 router ospf 1
@@ -431,9 +464,9 @@ interface GigabitEthernet0/1.300
  ipv6 ospf 1 area 0
 interface GigabitEthernet0/1.400
  ipv6 ospf 1 area 0
-interface Loopback0
- ipv6 ospf 1 area 0
 interface Serial0/0/0
+ ipv6 ospf 1 area 0
+interface Loopback0
  ipv6 ospf 1 area 0
 ```
 
@@ -441,18 +474,19 @@ interface Serial0/0/0
 ```plaintext
 ! OSPF para IPv4
 router ospf 1
- network 172.16.20.4 0.0.0.0 area 0   ! Loopback
+ router-id 2.2.2.2
  network 172.16.20.40 0.0.0.3 area 0  ! Serial EDGE-ISP
  network 172.16.20.44 0.0.0.3 area 0  ! Serial ISP-RT_SERVICES
+ network 172.16.20.4 0.0.0.0 area 0   ! Loopback
 
 ! OSPFv3 para IPv6
 ipv6 router ospf 1
  router-id 2.2.2.2
-interface Loopback0
- ipv6 ospf 1 area 0
 interface Serial0/0/0
- ipv6 ospf .ser 1 area 0
+ ipv6 ospf 1 area 0
 interface Serial0/0/1
+ ipv6 ospf 1 area 0
+interface Loopback0
  ipv6 ospf 1 area 0
 ```
 
@@ -460,20 +494,25 @@ interface Serial0/0/1
 ```plaintext
 ! OSPF para IPv4
 router ospf 1
- network 172.16.20.3 0.0.0.0 area 0   ! Loopback
- network 172.16.20.32 0.0.0.7 area 0  ! Servidor
+ router-id 3.3.3.3
+ network 172.16.20.32 0.0.0.7 area 0  ! Subred Servidor
  network 172.16.20.44 0.0.0.3 area 0  ! Serial ISP-RT_SERVICES
+ network 172.16.20.3 0.0.0.0 area 0   ! Loopback
 
 ! OSPFv3 para IPv6
 ipv6 router ospf 1
  router-id 3.3.3.3
-interface Loopback0
- ipv6 ospf 1 area 0
 interface GigabitEthernet0/0
  ipv6 ospf 1 area 0
 interface Serial0/0/0
  ipv6 ospf 1 area 0
+interface Loopback0
+ ipv6 ospf 1 area 0
 ```
+- **NOTAS**:
+  - Cada router tiene un router-id único.
+  - Todas las subredes (VLANs, servidor, seriales, loopbacks) se anuncian en el área 0.
+  - OSPFv3 requiere habilitar IPv6 en las interfaces relevantes.
 ---
 
 ## 6. Servicios
