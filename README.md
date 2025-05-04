@@ -634,3 +634,227 @@ El diseño propuesto cumple con todos los requerimientos del proyecto, proporcio
 - **Topología Packet Tracer**: Archivo .pkt disponible para revisión.
 - **Configuraciones Completas**: Scripts de configuración para routers y switches.
 - **Guías de Implementación**: Documentación adicional para servidores Postfix y Samba.
+
+## 11. Configuración de Thunderbird en Windows
+### Instalación
+1. Descarga e instala Thunderbird desde [https://www.thunderbird.net](https://www.thunderbird.net).
+
+### Creación de cuenta
+2. Crea una nueva cuenta (puedes omitir este paso si no tienes un correo real):
+   - **Nombre:** `correo1`
+   - **Correo:** `correo1@empresa.com`
+   - **Contraseña:** `correo123`
+
+### Configuración manual
+3. Configura los servidores manualmente:
+
+   #### Servidor entrante (IMAP)
+   - **Servidor:** `172.16.20.34`
+   - **Puerto:** `143`
+   - **Seguridad:** `Sin cifrado` (STARTTLS si está habilitado)
+   - **Autenticación:** `Contraseña normal`
+
+   #### Servidor saliente (SMTP)
+   - **Servidor:** `172.16.20.34`
+   - **Puerto:** `25`
+   - **Seguridad:** `Sin cifrado`
+   - **Autenticación:** `Contraseña normal`
+   - **Usuario:** `correo1`
+
+4. Guarda los cambios y prueba enviándote un correo de prueba.
+
+## 12. Script de configuración Samba/PostFix-Dovecot para red en casa desde ISP
+```ini
+#!/bin/bash
+# setup_casa_completo.sh
+# Configuración inicial completa (Samba, correo, red local)
+
+echo "Configurando entorno completo en casa..."
+
+# Interfaz de red (ajustar según tu VM)
+INTERFAZ="ens33"
+IPV4="192.168.1.100/24"
+GW4="192.168.1.1"
+
+# 1. Configurar red local
+echo "1. Configurando red..."
+sudo tee /etc/netplan/01-netcfg.yaml > /dev/null <<EOF
+network:
+  version: 2
+  ethernets:
+    $INTERFAZ:
+      addresses:
+        - $IPV4
+      gateway4: $GW4
+      nameservers:
+        addresses: [8.8.8.8, 8.8.4.4]
+EOF
+
+sudo netplan apply
+
+# 2. Instalar paquetes necesarios
+echo "2. Instalando paquetes..."
+sudo apt update && sudo apt install -y samba postfix dovecot-core dovecot-imapd ufw
+
+# 3. Crear carpetas y grupos para Samba
+echo "3. Configurando Samba..."
+sudo mkdir -p /srv/samba/{contabilidad,desarrollo,admon}
+sudo groupadd contabilidad
+sudo groupadd desarrollo
+sudo groupadd admon
+
+# 4. Crear usuarios
+create_user() {
+  if id "$1" &>/dev/null; then
+    echo "Usuario $1 ya existe"
+  else
+    sudo useradd -m -g "$2" -s /bin/false "$1"
+    echo "$1:$3" | sudo chpasswd
+    echo "$1" | sudo smbpasswd -a "$1"
+  fi
+}
+create_user "usuario_cont1" "contabilidad" "1234"
+create_user "usuario_dev1" "desarrollo" "1234"
+create_user "usuario_adm1" "admon" "1234"
+create_user "correo1" "users" "correo123"
+
+# 5. Permisos
+sudo chown :contabilidad /srv/samba/contabilidad && sudo chmod 750 /srv/samba/contabilidad
+sudo chown :desarrollo /srv/samba/desarrollo && sudo chmod 770 /srv/samba/desarrollo
+sudo chown :admon /srv/samba/admon && sudo chmod 770 /srv/samba/admon
+
+# 6. Configuración Samba
+sudo tee /etc/samba/smb.conf > /dev/null <<EOF
+[global]
+   server string = Samba Server
+   workgroup = WORKGROUP
+   bind interfaces only = yes
+   interfaces = $IPV4
+   security = user
+
+[Contabilidad]
+   path = /srv/samba/contabilidad
+   read only = yes
+   valid users = @contabilidad
+   browsable = yes
+
+[Desarrollo]
+   path = /srv/samba/desarrollo
+   read only = no
+   valid users = @desarrollo
+   browsable = yes
+
+[Admon]
+   path = /srv/samba/admon
+   read only = no
+   create mask = 0777
+   directory mask = 0777
+   valid users = @admon
+   browsable = yes
+EOF
+
+# 7. Configurar correo (Postfix/Dovecot)
+sudo tee -a /etc/postfix/main.cf > /dev/null <<EOF
+myhostname = mail.empresa.com
+mydomain = empresa.com
+myorigin = /etc/mailname
+inet_interfaces = $IPV4
+mydestination = \$myhostname, localhost.\$mydomain, \$mydomain
+mynetworks = 192.168.1.0/24
+mailbox_size_limit = 0
+recipient_delimiter = +
+EOF
+
+sudo sed -i "s|^#mail_location =.*|mail_location = maildir:~/Maildir|" /etc/dovecot/conf.d/10-mail.conf
+sudo sed -i "s/^#disable_plaintext_auth = yes/disable_plaintext_auth = no/" /etc/dovecot/conf.d/10-auth.conf
+sudo sed -i "s/^auth_mechanisms = .*/auth_mechanisms = plain login/" /etc/dovecot/conf.d/10-auth.conf
+
+sudo tee -a /etc/dovecot/conf.d/10-master.conf > /dev/null <<EOF
+
+service imap-login {
+  inet_listener imap {
+    address = 192.168.1.100
+    port = 143
+  }
+}
+EOF
+
+# 8. Activar firewall
+sudo ufw --force reset
+sudo ufw allow 25/tcp
+sudo ufw allow 143/tcp
+sudo ufw allow 137/udp
+sudo ufw allow 138/udp
+sudo ufw allow 139/tcp
+sudo ufw allow 445/tcp
+sudo ufw --force enable
+
+# 9. Reiniciar servicios
+sudo systemctl restart smbd nmbd postfix dovecot
+
+echo "✅ Configuración de casa completada."
+```
+---
+## 13. Script de configuración de red para laboratorio de cisco
+```ini
+#!/bin/bash
+# setup_red_laboratorio.sh
+# Cambia la configuración de red para el entorno del laboratorio
+
+echo "Configurando red del LABORATORIO..."
+
+INTERFAZ="ens33"
+IPV4="172.16.20.34/29"
+GW4="172.16.20.33"
+GW4="172.16.20.33"
+GW6="2001:dbad:acad:5000::1"
+
+sudo tee /etc/netplan/01-netcfg.yaml > /dev/null <<EOF
+network:
+  version: 2
+  ethernets:
+    $INTERFAZ:
+      addresses:
+        - $IPV4
+        - $IPV6
+      gateway4: $GW4
+      gateway6: $GW6
+      nameservers:
+        addresses: [8.8.8.8, 8.8.4.4]
+EOF
+
+sudo netplan apply
+sudo systemctl restart smbd nmbd postfix dovecot
+
+echo "✅ Red del laboratorio configurada."
+```
+---
+## 14. Script de configuración de red al volver a la red local de casa
+```ini
+#!/bin/bash
+# setup_red_casa.sh
+# Cambia la configuración de red para volver al entorno de casa
+
+echo "Volviendo a red de CASA..."
+
+INTERFAZ="ens33"
+IPV4="192.168.1.100/24"
+GW4="192.168.1.1"
+
+sudo tee /etc/netplan/01-netcfg.yaml > /dev/null <<EOF
+network:
+  version: 2
+  ethernets:
+    $INTERFAZ:
+      addresses:
+        - $IPV4
+      gateway4: $GW4
+      nameservers:
+        addresses: [8.8.8.8, 8.8.4.4]
+EOF
+
+sudo netplan apply
+sudo systemctl restart smbd nmbd postfix dovecot
+
+echo "✅ Red de casa configurada nuevamente."
+```
