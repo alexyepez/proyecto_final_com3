@@ -106,36 +106,6 @@ La dirección base es **2001:dbad:acad::/48**. Se asignan subredes de /64, añad
    dns-server 8.8.8.8
   ```
 - **IPv6**: Se utiliza SLAAC (Stateless Address Autoconfiguration) para asignar direcciones automáticamente a dispositivos finales, con el router enviando anuncios de prefijo (/64). Para dispositivos de red, se asignan direcciones estáticas en la subred 2001:dbad:acad:5000::/64.
-  ```plaintext
-  interface GigabitEthernet0/1.100
-   encapsulation dot1Q 100
-   ip address 172.16.16.1 255.255.254.0
-   ipv6 address 2001:dbad:acad:1000::1/64
-   ipv6 nd prefix 2001:dbad:acad:1000::/64
-   ipv6 nd managed-config-flag
-   ipv6 nd other-config-flag
-  interface GigabitEthernet0/1.200
-   encapsulation dot1Q 200
-   ip address 172.16.18.1 255.255.255.0
-   ipv6 address 2001:dbad:acad:2000::1/64
-   ipv6 nd prefix 2001:dbad:acad:2000::/64
-   ipv6 nd managed-config-flag
-   ipv6 nd other-config-flag
-  interface GigabitEthernet0/1.300
-   encapsulation dot1Q 300
-   ip address 172.16.19.1 255.255.255.0
-   ipv6 address 2001:dbad:acad:3000::1/64
-   ipv6 nd prefix 2001:dbad:acad:3000::/64
-   ipv6 nd managed-config-flag
-   ipv6 nd other-config-flag
-  interface GigabitEthernet0/1.400
-   encapsulation dot1Q 400
-   ip address 172.16.20.1 255.255.255.224
-   ipv6 address 2001:dbad:acad:4000::1/64
-   ipv6 nd prefix 2001:dbad:acad:4000::/64
-   ipv6 nd managed-config-flag
-   ipv6 nd other-config-flag
-  ```
   
 ---
 
@@ -422,25 +392,35 @@ La red consta de:
 ### 5.1 Configuración en Router EDGE
 Se utiliza **Router-on-a-Stick** con una sola interfaz Ethernet (GigabitEthernet0/1) configurada con subinterfaces para cada VLAN.
 ```plaintext
-interface GigabitEthernet0/1
- no ip address
-interface GigabitEthernet0/1.100
- encapsulation dot1Q 100
- ip address 172.16.16.1 255.255.255.128
- ipv6 address 2001:dbad:acad:1000::1/64
-interface GigabitEthernet0/1.200
- encapsulation dot1Q 200
- ip address 172.16.18.129 255.255.255.128
- ipv6 address 2001:dbad:acad:2000::1/64
-interface GigabitEthernet0/1.300
- encapsulation dot1Q 300
- ip address 172.16.20.1 255.255.255.128
- ipv6 address 2001:dbad:acad:3000::1/64
-interface GigabitEthernet0/1.400
- encapsulation dot1Q 400
- ip address 172.16.20.129 255.255.255.248
- ipv6 address 2001:dbad:acad:4000::1/64
-```
+  interface GigabitEthernet0/1.100
+   encapsulation dot1Q 100
+   ip address 172.16.16.1 255.255.254.0
+   ipv6 address 2001:dbad:acad:1000::1/64
+   ipv6 nd prefix 2001:dbad:acad:1000::/64
+   ipv6 nd managed-config-flag
+   ipv6 nd other-config-flag
+  interface GigabitEthernet0/1.200
+   encapsulation dot1Q 200
+   ip address 172.16.18.1 255.255.255.0
+   ipv6 address 2001:dbad:acad:2000::1/64
+   ipv6 nd prefix 2001:dbad:acad:2000::/64
+   ipv6 nd managed-config-flag
+   ipv6 nd other-config-flag
+  interface GigabitEthernet0/1.300
+   encapsulation dot1Q 300
+   ip address 172.16.19.1 255.255.255.0
+   ipv6 address 2001:dbad:acad:3000::1/64
+   ipv6 nd prefix 2001:dbad:acad:3000::/64
+   ipv6 nd managed-config-flag
+   ipv6 nd other-config-flag
+  interface GigabitEthernet0/1.400
+   encapsulation dot1Q 400
+   ip address 172.16.20.1 255.255.255.224
+   ipv6 address 2001:dbad:acad:4000::1/64
+   ipv6 nd prefix 2001:dbad:acad:4000::/64
+   ipv6 nd managed-config-flag
+   ipv6 nd other-config-flag
+  ```
 
 ### 5.2 Enrutamiento
 Se configura OSPF para IPv4 y OSPFv3 para IPv6 para enrutamiento dinámico entre VLANs y con el exterior.
